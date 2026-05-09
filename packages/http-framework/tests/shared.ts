@@ -193,15 +193,17 @@ export const MultipleFilesData: RawFile[] = [
 	{
 		data: 'file content',
 		name: 'test.txt',
-		key: 'files[0]'
+		key: 'files[0]',
+		contentType: 'text/plain'
 	},
 	{
 		data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
 		name: 'file1.png',
-		key: 'files[1]'
+		key: 'files[1]',
+		contentType: 'image/png'
 	},
 	{
-		data: 12345678,
+		data: 0xdeadbeef,
 		name: 'file2.txt',
 		key: 'files[2]'
 	},

@@ -41,10 +41,21 @@ describe('CommandInteraction', () => {
 			const response = makeResponse();
 			const interaction = new ChatInputCommandInteraction(response, ChatInputApplicationCommandInteractionData);
 
+			const spy = vi.spyOn(response, 'write');
+
 			await interaction.reply({
 				content: 'Hello with multiple files',
 				files: MultipleFilesData
 			});
+
+			const calls = spy.mock.calls.flatMap((calls) => calls[0]);
+			const buffers = calls.map((u: Uint8Array) => Buffer.from(u));
+			const joined = Buffer.concat(buffers);
+
+			expect(joined.indexOf(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBeGreaterThan(0);
+			expect(joined.includes(Buffer.from('file1.png'))).toBe(true);
+			expect(joined.includes(Buffer.from('image/png'))).toBe(true);
+			expect(joined.includes(Buffer.from('file content'))).toBe(true);
 
 			expect(response.getHeader('Content-Type')).toContain('multipart/form-data');
 			expect(response.writableEnded).toBe(true);

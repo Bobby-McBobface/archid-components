@@ -13,7 +13,7 @@ import {
 	type RESTGetAPIGuildResult
 } from 'discord-api-types/v10';
 import type { ServerResponse } from 'node:http';
-import { Readable } from 'node:stream';
+import { Readable, pipeline } from 'node:stream';
 import { HttpCodes } from '../../../../api/HttpCodes.js';
 import type { DiscordResult } from '../../../utils/util-types.js';
 import { resultFromDiscord } from '../../../utils/util.js';
@@ -253,10 +253,19 @@ export abstract class BaseInteraction<T extends BaseInteractionType = BaseIntera
 			const form = new FormData();
 
 			for (const [index, file] of files.entries()) {
-				form.append(file.key ?? `files[${index}]`, file.data, file.name);
+				let buf;
+				if (Buffer.isBuffer(file.data)) {
+					buf = file.data;
+				} else if (file.data instanceof ArrayBuffer) {
+					buf = Buffer.from(file.data);
+				} else {
+					buf = Buffer.from(String(file.data), 'utf8');
+				}
+
+				form.append(file.key ?? `files[${index}]`, new Blob([buf], { type: file.contentType }), file.name);
 			}
 
-			form.append('payload_json', JSON.stringify(data));
+			form.append('payload_json', new Blob([JSON.stringify(data)], { type: 'application/json' }));
 
 			const encoder = new FormDataEncoder(form);
 			response.setHeader('Content-Type', encoder.headers['Content-Type']);
@@ -267,7 +276,10 @@ export abstract class BaseInteraction<T extends BaseInteractionType = BaseIntera
 
 			const readable = Readable.from(encoder);
 			return new Promise<void>((resolve, reject) => {
-				readable.pipe(response).on('close', resolve).on('error', reject);
+				response.on('close', resolve).on('error', reject);
+				pipeline(readable, response, (err) => {
+					if (err) return reject(err);
+				});
 			});
 		}
 
